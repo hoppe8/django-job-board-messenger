@@ -1,0 +1,165 @@
+{% load static %}
+
+<div id="connections-panel" class="d-flex flex-column rounded h-100 bg-white shadow">
+   <div class="d-flex border-bottom bgd-dark px-3 py-12px">
+      <h1 class="d-flex flex-column justify-content-center flex-grow-1 mb-0 fs-2" style="color: white;">Messages</h1>
+      <button type="button" class="btn btn-icon-dark-bg rounded-circle p-1" title="Start a new conversation" data-bs-toggle="modal" data-bs-target="#new-conversation-modal">
+         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-plus-circle"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+      </button>
+   </div>
+
+   {% if user.is_employer %}
+   <div class="px-2 py-2 border-bottom">
+      <select id="job-select" class="form-select form-control" aria-label="Refine by job listing">
+         <option>Select to refine by job listing</option>
+	 {% for job_listing in job_listings %}
+	 {% if job_id == job_listing.pk %}
+	 <option data-job-id="{{ job_listing.pk }}" selected>{{ job_listing.job_title }} (ID: {{ job_listing.pk }})</option>
+	 {% else %}
+	 <option data-job-id="{{ job_listing.pk }}">{{ job_listing.job_title }} (ID: {{ job_listing.pk }})</option>
+	 {% endif %}
+	 {% endfor %}
+      </select>
+   </div>
+   {% endif %}
+
+   <div id="conversations" class="flex-grow-1" style="height: 0; overflow-y: auto;">
+      {% if rooms %}
+      {% for room, last_message, status in rooms %}
+      {% if user.is_employer and room.user1_is_active %}
+      <div id="panel-tab-{{ room.pk }}" class="panel-tab conversation">
+	 {% if job_id %}
+	 <a href="/messages/{{ room.pk }}/?q={{ job_id }}" class="text-dark text-decoration-none">
+	 {% else %}
+	 <a href="/messages/{{ room.pk }}/" class="text-dark text-decoration-none">
+	 {% endif %}
+            <div style="height: 100px;" class="border-bottom">
+               <div class="d-flex p-2 p-sm-3 h-100">
+                  <div class="flex-shrink my-auto mr-12px">
+		     <img class="rounded-circle" style="width:44px; height:44px;" src="https://avatar.oxro.io/avatar.svg?name={{ room.user2.first_name }}+{{ room.user2.last_name }}&background=342e6c&length=1">
+                  </div>
+
+                  <div class="flex-grow-1 py-1 py-sm-0" style="min-width:0px;">
+		     <div id="tab-message-timestamp-{{ room.pk }}" class="tab-message-timestamp float-right small" style="padding: .125rem 0;">
+		        {{ last_message.1 }}
+		     </div>
+                     <div>
+                        <div class="text-truncate font-weight-bold" style="max-width: 90%;">
+		           {{ room.user2.first_name }} {{ room.user2.last_name }}
+                        </div>
+                     </div>
+
+                     <div class="text-truncate" style="max-width: 90%;">
+		        <span class="text-capitalize">{{ status }}</span> for {{ room.job_listing.job_title }} (ID: {{ room.job_listing.pk }})
+                     </div>
+
+		     {% if room.user1_num_unread_messages > 0 %}
+		     <div id="badge-unread-{{ room.pk }}" class="badge badge-unread badge-danger rounded-pill float-right">
+			{% if room.user1_num_unread_messages < 9 %}
+			{{ room.user1_num_unread_messages }}
+			{% else %}
+                        9+
+			{% endif %}
+		     </div>
+		     {% else %}
+		     <div id="badge-unread-{{ room.pk}}" class="badge badge-unread badge-danger rounded-pill float-right d-none"></div>
+		     {% endif %}
+		     <div id="tab-message-content-{{ room.pk }}" class="text-truncate small text-muted tab-message-content" style="max-width: 90%;">
+		        {{ last_message.0 }}
+                     </div>
+                  </div>
+	       </div>
+            </div>
+         </a>
+      </div>
+
+      {% elif user.is_applicant and room.user2_is_active %}
+      <div id="panel-tab-{{ room.pk }}" class="panel-tab conversation">
+	 {% if job_id %}
+	 <a href="/messages/{{ room.pk }}/?q={{ job_id }}" class="text-dark text-decoration-none">
+	 {% else %}
+	 <a href="/messages/{{ room.pk }}/" class="text-dark text-decoration-none">
+	 {% endif %}
+            <div style="height: 100px;" class="border-bottom">
+               <div class="d-flex p-2 p-sm-3 h-100">
+                  <div class="flex-shrink my-auto mr-12px">
+                     <img class="rounded-circle" style="width:44px; height:44px;" src="https://avatar.oxro.io/avatar.svg?name={{ room.user1.employer.company }}&background=342e6c&length=1">
+                  </div>
+
+                  <div class="flex-grow-1 py-1 py-sm-0" style="min-width:0px;">
+		     <div id="tab-message-timestamp-{{ room.pk }}" class="tab-message-timestamp float-right small" style="padding: .125rem 0;">
+		        {{ last_message.1 }}
+		     </div>
+
+		     <div>
+                        <div class="text-truncate font-weight-bold" style="max-width: 90%;">
+			   {{ room.user1.first_name }} {{ room.user1.last_name }}
+                        </div>
+                     </div>
+
+                     <div class="text-truncate" style="max-width: 90%;">
+                        {{ room.user1.employer.company }}
+                     </div>
+
+		     {% if room.user2_num_unread_messages > 0 %}
+		     <div id="badge-unread-{{ room.pk }}" class="badge badge-unread badge-danger rounded-pill float-right">
+			{% if room.user2_num_unread_messages < 9 %}
+			{{ room.user2_num_unread_messages }}
+			{% else %}
+                        9+
+			{% endif %}
+		     </div>
+		     {% else %}
+		     <div id="badge-unread-{{ room.pk}}" class="badge badge-unread badge-danger rounded-pill float-right d-none"></div>
+		     {% endif %}
+		     <div id="tab-message-content-{{ room.pk }}" class="text-truncate small text-muted tab-message-content" style="max-width: 90%;">
+		        {{ last_message.0 }}
+                     </div>
+                  </div>
+	       </div>
+            </div>
+         </a>
+      </div>
+
+      {% endif %}
+      {% endfor %}
+      {% elif inactive_rooms %}
+      <div class="px-3 py-2 lh-sm">
+	 {% if user.is_employer %}
+	 Start a new conversation, or <a class="dark-link" href="{% url 'new-listing' %}">make a new connection</a> today.
+	 {% elif user.is_applicant %}
+         Start a new conversation, or <a class="dark-link" href="/">make a new connection</a> today.
+	 {% endif %}
+      </div>
+      {% else %}
+      <div class="px-3 py-2 lh-sm">
+         {% if user.is_employer %}
+         You have no current connections.
+	 <a class="dark-link" href="{% url 'new-listing' %}">List a job today.</a>
+	 {% elif user.is_applicant %}
+         You have no current connections.
+	 <a class="dark-link" href="/">Make a new connection today.</a>
+	 {% endif %}
+      </div>
+      {% endif %}
+   </div>
+</div>
+
+{% include 'messenger/new_conversation_modal.html' %}
+
+{% if current_room %}
+<script>document.getElementById("panel-tab-{{ current_room.pk }}").classList.add("panel-tab-active");</script>
+{% endif %}
+
+{% if user.is_employer %}
+<script>
+   document.getElementById("job-select").addEventListener("input", function (event) {
+      if (event.target.value == "Select to refine by job listing") {
+	 return;
+      }
+      var url = window.location.href.split("?")[0] + "?q=" + event.target.options[event.target.selectedIndex].getAttribute("data-job-id");
+      window.location.replace(url);
+   });
+</script>
+{% endif %}
+

@@ -1,0 +1,49 @@
+#chat-box {
+
+   min-height: 175px;
+   resize: none !important;
+   overflow-y: auto;
+   border: 1px solid #DEE2E6 !important;
+   border-radius: 0;
+   white-space: pre-wrap !important;
+   background-color: #FAFAFA;
+}
+
+#chat-box:hover {
+
+   border: 1px solid lightgray !important;
+
+}
+
+#chat-box:focus {
+
+   background-color: white;
+   box-shadow: none !important;
+   border: 2px solid #0d6efd !important;
+
+}
+
+@media only screen and (max-width: 575.98px) {
+
+   #chat-box {
+
+      min-height: 125px;
+
+   }
+
+   button {
+
+      margin-right: 16px !important;
+
+   }
+
+}
+
+@media only screen and (max-width: 991.98px) {
+   #chat-input {
+
+      margin-right: 2px;
+      margin-left: 1px;
+
+   }
+}

@@ -1,0 +1,402 @@
+{% extends "[INSERT PROJECT NAME]/base_no_footer_lg_header.html" %}
+
+{% load static %}
+{% block title %}Messages | {% endblock title %}
+
+{% block styles %}
+<link rel="stylesheet" href="{% static 'messenger/styles/messenger.css' %}" type="text/css">
+{% endblock styles %}
+
+{% block content %}
+<div class="row h-100">
+   <div class="col-lg-4 d-none d-lg-block">
+      {% include 'messenger/connections_panel.html' %}
+   </div>
+
+   <div class="col-lg-8">
+      <div class="d-flex flex-column h-100 bg-white shadow">
+	 <div class="d-flex justify-content-between border-bottom shadow-sm pl-3 pr-0 pr-sm-3 py-1">
+	    <a class="btn btn-icon d-lg-none rounded-circle my-auto p-1" href="/messages/" title="Back to messages">
+	       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#212529" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-left"><polyline points="15 18 9 12 15 6"></polyline></svg>
+	    </a>
+	    <div class="ml-lg-2 text-truncate" style="max-width: 90%;">
+	       {% if user.is_employer %}
+	       <h2 class="fs-5 mb-0">{{ current_room.user2.first_name }} {{ current_room.user2.last_name }}</h2>
+	       <div class="fs-6 mb-0 text-muted">
+		  <span class="text-capitalize">{{ app_status }}</span> for {{ current_room.job_listing.job_title }}</div>
+	       {% else %}
+
+	       <h2 class="fs-5 mb-0">{{ current_room.job_listing.job_title }}</h2>
+	       <p class="fs-6 mb-0 text-muted">{{ current_room.user1.employer.company }}</p>
+	       {% endif %}
+	    </div>
+	    <button type="button" class="btn btn-icon dropdown-toggle my-auto p-1 rounded-circle" title="Menu" data-bs-toggle="dropdown" aria-expanded="false">
+               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#212529" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-more-horizontal"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+	    </button>
+	    <ul class="dropdown-menu dropdown-menu-end shadow py-1">
+	    <form method="POST"> {% csrf_token %}
+	       {% if user.is_employer %}
+	       <li><button type="button" id="btn-view-app" class="dropdown-item" href="#">View application</button></li>
+	       <li><button type="button" id="btn-report" class="dropdown-item" href="#">Report applicant</button></li>
+	       {% elif user.is_applicant %}
+	       <li><button type="button" id="btn-view-listing" class="dropdown-item" href="#">View listing</button></li>
+	       <li><button type="button" id="btn-report" class="dropdown-item" href="#">Report employer</button></li>
+	       {% endif %}
+	       <li><button type="button" id="btn-close-dm" class="dropdown-item" href="#">Close conversation</button></li>
+            </form>
+	    </ul>
+         </div>
+
+         <div id="chat" class="d-flex flex-column flex-grow-1">
+            <div id="chat-content" class="d-flex flex-column flex-grow-1">
+
+	    <div id="chat-log" class="flex-grow-1 px-3 px-md-4 pt-2" style="height: 0; overflow-y: auto;">
+	       <div id="no-messages-div">
+		  {% if request.user.is_employer %}
+		  <p class="text-muted small">This is the beginning of your message history with {{ current_room.user2.first_name }} {{ current_room.user2.last_name }}...</p>
+		  {% elif request.user.is_applicant %}
+		  <p class="text-muted small">This is the beginning of your direct message history with {{ current_room.user1.employer.company }}...</p>
+		  {% endif %}
+	       </div>
+	    </div>
+
+	    <div id="chat-input">
+		<button type="button" title="Expand" class="btn btn-expand btn-icon position-absolute mt-1 mt-sm-3 py-1 px-2 shadow-none rounded-circle" style="right: 0; margin-right: 28px;">
+		   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-maximize-2"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+		</button>
+		<button type="button" title="Shrink" class="btn btn-contract btn-icon position-absolute mt-1 mt-sm-3 py-1 px-2 shadow-none rounded-circle d-none" style="right: 0; margin-right: 28px;">
+		   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-minimize-2"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+		</button>
+
+	        <textarea id="chat-box" class="form-control pl-3 pl-sm-4 pr-5 py-2 py-sm-3" type="text" placeholder="Send a message..."></textarea>
+	    </div>
+
+	    </div>
+
+	    <div id="chat-btns" class="d-flex p-1">
+	       <div class="p-1">
+	          <button class="btn btn-icon rounded-circle p-2 mr-0">
+		     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#212529" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-paperclip"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+	          </button>
+	       </div>
+
+	       <button id="chat-message-submit" class="btn btn-primary btn-lg flex-grow-1 mr-0" type="button">
+	          <img class="mr-2" src="{% static 'ws/media/send-white.svg' %}"><span>Send</span>
+	       </button>
+	    </div>
+
+	 </div>
+      </div>
+   </div> 
+
+</div>
+{% endblock content %}
+
+{% block scripts %}
+
+<script src="{% static 'messenger/scripts/reconnecting-websocket.min.js' %}"></script>
+<script src="{% static 'messenger/scripts/chat_box.js' %}"></script>
+
+<script>
+    var roomID = {{ current_room.pk }};
+    var chatSocket = new ReconnectingWebSocket('ws://' + window.location.host + '/ws/messages/'+ roomID + '/');
+
+    var messagesFetched = false;
+    chatSocket.onopen = function(e) {
+       if (!messagesFetched) {
+          fetchMessages();
+	  messagesFetched = true;
+       }
+    };
+
+   chatSocket.onmessage = function(e) {
+      var data = JSON.parse(e.data);
+      if (data["command"] === "messages") {
+         for (let i = 0; i < data["messages"].length; i++) {
+            createMessage(data["messages"][i]);
+         }
+      }
+      else if (data["command"] === "new_message") {
+         createMessage(data["message"]);
+
+	 var div = document.getElementById("panel-tab-" + roomID);
+	 document.getElementById("conversations").prepend(div);
+
+         document.getElementById("tab-message-timestamp-" + roomID).innerText = data["message"]["panel_timestamp"];
+         document.getElementById("tab-message-content-" + roomID).innerText = data["message"]["content"];
+
+	 if ({{ user.pk}} != data["message"]["author"]) {
+            $.ajax({
+               type: "GET",
+               url: window.location.href,
+               data: {
+                  action: "read",
+               },
+            });
+         }
+      }
+   };
+
+   chatSocket.onclose = function(e) {
+       console.error("Chat socket closed unexpectedly");
+   };
+
+   function fetchMessages() {
+      chatSocket.send(JSON.stringify({"command": "fetch_messages" }));
+   }
+
+   function createMessage(data) {
+        var pk = data["message_id"]
+	var author = data["author"];
+	var authorDisplay = data["author_display"];
+	var timestamp = data["timestamp"];
+
+        var div = document.createElement("div");
+	var textNode = document.createTextNode(data["content"]);
+	div.classList.add("chat-message", "d-flex", "mb-3");
+	div.id = "chat-message-" + pk;
+	div.innerHTML = document.getElementById("message-block").innerHTML;
+	document.getElementById("chat-log").appendChild(div);
+
+	if (data["company"] != false) {
+           div.querySelector("img").src = "https://avatar.oxro.io/avatar.svg?name=" + data["company"] + "&background=342e6c&length=1";
+	}
+	else {
+           div.querySelector("img").src = "https://avatar.oxro.io/avatar.svg?name=" + authorDisplay + "&background=342e6c&length=1";
+	}
+
+	div.querySelector(".message-user").innerText = authorDisplay;
+	div.querySelector(".message-timestamp").innerText = timestamp;
+
+	var message_content = document.getElementById("chat-message-" + pk).querySelector(".message-content");
+	message_content.id = "message-content-" + pk;
+	writeMessage(message_content, data["content"]);
+
+	document.getElementById("chat-log").scrollTop = document.getElementById("chat-log").scrollHeight;
+        document.getElementById("chat-box").style.height = "auto";
+
+    }
+
+   function writeMessage(message_content, content) {
+	var p = document.createElement("p");
+	p.classList.add("mb-0");
+
+	var str = "";
+	var lastLineBr = true;
+
+	for (var i = 0; i < content.length; i++) {
+           if (content[i] == "\n") {
+	      if (str != "") {
+	         p.appendChild(document.createTextNode(str));
+	         message_content.appendChild(p);
+
+	         str = "";
+		 lastLineBr = false;
+	         p = document.createElement("p");
+	         p.classList.add("mb-0");
+	      }
+	      else if (!lastLineBr) {
+		 var j = i + 1;
+	         var endOfMessage = true;
+
+		 while (j < content.length) {
+		    if (content[j++] == "\n") {
+		       continue;
+		    }
+		    else {
+		       endOfMessage = false;
+		       break;
+		    }
+		 }
+
+		 if (endOfMessage) {
+		    break;
+		 }
+		 else {
+	            message_content.appendChild(document.createElement("br"));
+	            lastLineBr = true;
+		 }
+	      }
+	      else {
+	         continue;
+	      }
+	   }
+	   else {
+	      str += content[i];
+              if (i+1 == content.length) {
+		 p.appendChild(document.createTextNode(str));
+	         message_content.appendChild(p);
+	      }
+	   }
+	}
+   }
+
+
+   document.querySelector("#chat-message-submit").onclick = function(e) {
+       var messageInputDom = document.querySelector("#chat-box");
+       var message = messageInputDom.value;
+       if (message == ""){
+          document.querySelector("#chat-box").focus();
+          return;
+       }
+       chatSocket.send(JSON.stringify({
+           "author_id": {{ author_id }},
+           "message": message,
+           "command": "new_message",
+       }));
+       messageInputDom.value = '';
+       
+       if (document.querySelector("#chat-box").classList.contains("is-expanded")) {
+          document.querySelector(".btn-contract").click();
+       }
+       document.querySelector('#chat-box').focus();
+   };
+</script>
+
+{% if room_pks %}
+<script>
+   {% for room_pk in room_pks %}
+   {% if room_pk != current_room.pk %}
+   var chatSocket{{ room_pk }} = new ReconnectingWebSocket('ws://' + window.location.host + '/ws/messages/'+ {{ room_pk }} + '/');
+
+   chatSocket{{ room_pk }}.onmessage = function(e) {
+      var data = JSON.parse(e.data);
+      if (document.getElementById("panel-tab-{{ room_pk }}") != null) {
+	 var div = document.getElementById("panel-tab-{{ room_pk }}");
+	 document.getElementById("conversations").prepend(div);
+
+         document.getElementById("tab-message-timestamp-{{ room_pk }}").innerText = data["message"]["panel_timestamp"];
+         document.getElementById("tab-message-content-{{ room_pk }}").innerText = data["message"]["content"];
+
+         // message sent by current user
+	 if (Number(data["message"]["author"] === {{ user.pk }})) {
+	    return;
+	 }
+
+	 var badge_unread = document.getElementById("badge-unread-{{ room_pk }}");
+	 if (badge_unread.classList.contains("d-none")) {
+            badge_unread.classList.remove("d-none");
+            badge_unread.innerText = 1;
+	 }
+	 else if (Number(badge_unread.innerText) + 1 < 9) {
+            badge_unread.innerText = Number(badge_unread.innerText) + 1;
+	 }
+	 else {
+            badge_unread.innerText = "9+";
+	 }
+      }
+      else {
+	 var div = document.createElement("div");
+	 div.id = "panel-tab-{{ room_pk }}";
+	 div.classList.add("panel-tab", "conversation");
+
+	 var a = document.createElement("a");
+	 a.classList.add("text-dark", "text-decoration-none");
+
+	 {% if job_id %}
+	 a.href = "/messages/{{ room_pk }}/?q={{ job_id }}";
+	 {% else %}
+	 a.href = "/messages/{{ room_pk }}/";
+	 {% endif %}
+
+         a.innerHTML = document.getElementById("panel-tab-block").innerHTML;
+	 div.appendChild(a);
+        
+	 {% if user.is_employer %}
+	 div.querySelector(".user-avatar").src = "https://avatar.oxro.io/avatar.svg?name=" + data["message"]["author_display"] + "&background=342e6c&length=1";
+	 {% elif user.is_applicant %}
+	 div.querySelector(".user-avatar").src = "https://avatar.oxro.io/avatar.svg?name=" + data["message"]["company"] + "&background=342e6c&length=1";
+	 {% endif %}
+
+	 div.querySelector(".tab-message-timestamp").innerText = data["message"]["panel_timestamp"];
+	 div.querySelector(".tab-message-timestamp").id = "tab-message-timestamp-{{ room_pk }}";
+
+	 div.querySelector(".tab-message-author-display").innerText = data["message"]["author_display"];
+
+	 {% if user.is_employer %}
+	 div.querySelector(".panel-tab-application-status").innerText = data["message"]["status"];
+	 div.querySelector(".panel-tab-job-info").innerText = " for " + data["message"]["job_title"] + " (ID: " + data["message"]["job_id"] + ")";
+	 {% elif user.is_applicant %}
+	 div.querySelector(".panel-tab-company").innerText = data["message"]["company"];
+	 {% endif %}
+
+	 div.querySelector(".tab-message-content").innerText = data["message"]["content"];
+	 div.querySelector(".tab-message-content").id = "tab-message-content-{{ room_pk }}";
+
+	 div.querySelector(".badge-unread").id = "badge-unread-{{ room_pk }}";
+
+         document.getElementById("conversations").prepend(div);
+      }
+   };
+   {% endif %}
+   {% endfor %}
+</script>
+{% endif %}
+
+<script id="message-block">
+   <div class="d-flex mr-12px">
+      <img class="rounded-circle" style="width: 44px; height: 44px">
+   </div>
+
+   <div class="my-auto">
+      <p class="lh-1" style="margin-bottom: 3px;">
+         <span class="message-user font-weight-bold"></span>
+         <br/>
+         <span class="message-timestamp small text-muted" style="font-size: .85rem;"></span>
+      </p>
+   
+      <div class="message-content">
+      </div>
+   </div>
+</script>
+
+<script id="panel-tab-block">
+   <div style="height: 100px;" class="border-bottom">
+      <div class="d-flex p-2 p-sm-3 h-100">
+         <div class="flex-shrink my-auto mr-12px">
+            <img class="user-avatar rounded-circle" style="width:44px; height:44px;">
+         </div>
+
+         <div class="flex-grow-1 py-1 py-sm-0" style="min-width:0px;">
+            <div class="tab-message-timestamp float-right small" style="padding: .125rem 0;"></div>
+
+            <div>
+               <div class="text-truncate font-weight-bold tab-message-author-display" style="max-width: 90%;"></div>
+            </div>
+
+            <div class="text-truncate" style="max-width: 90%;">
+	       {% if user.is_employer %}
+	       <span class="panel-tab-application-status text-capitalize"></span>
+	       <span class="panel-tab-job-info"></span>
+	       {% elif user.is_applicant %}
+               <span class="panel-tab-company"></span>
+	       {% endif %}
+            </div>
+
+            <div class="badge badge-unread badge-danger rounded-pill float-right">1</div>
+            <div class="text-truncate small text-muted tab-message-content" style="max-width: 90%;"></div>
+         </div>
+      </div>
+   </div>
+</script>
+
+<script>
+   document.getElementById("btn-close-dm").addEventListener("click", function () {
+      $.ajax({
+         type: "POST",
+         url: window.location.href,
+         data: {
+            'csrfmiddlewaretoken': $("input[name=csrfmiddlewaretoken]").val(),
+            action: "close",
+         },
+      });
+      {% if job_id %}
+      window.location.replace("{% url 'messages' %}?q={{ job_id }}");
+      {% else %}
+      window.location.replace("{% url 'messages' %}");
+      {% endif %}
+   });
+</script>
+{% endblock scripts %}
+
+

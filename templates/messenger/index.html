@@ -1,0 +1,152 @@
+{% extends "[INSERT PROJECT NAME]/base_no_footer.html" %}
+
+{% load static %}
+{% block title %}Messages | {% endblock title %}
+
+{% block content %}
+<div class="row h-100 mb-4">
+   <div class="col-lg-4">
+      {% include 'messenger/connections_panel.html' %}
+   </div>
+
+   <div class="col-lg-8 d-none d-lg-block">
+      <div class="d-flex justify-content-center h-100 rounded bg-white shadow ">
+	 <div class="align-self-center text-center p-5">
+	    {% if rooms %}
+	    <h2 class="mb-1 fs-5">Select a conversation</h2>
+	    {% elif inactive_rooms %}
+	    <h2 class="mb-0 fs-5">You have no open conversations.</h2>
+	    <div>
+	       {% if user.is_employer %}
+	       Start a new conversation, or <a class="dark-link" href="{% url 'new-listing' %}">make a new connection</a> today. 
+	       {% elif user.is_applicant %}
+	       Start a new conversation, or <a class="dark-link" href="/">make a new connection</a> today. 
+	       {% endif %}
+	    </div>
+	    {% else %}
+	    <h2 class="mb-0 fs-5">You have no current connections.</h2>
+	    {% if user.is_applicant %}
+	    <a class="dark-link" href="/">Make a new connection today.</a>
+	    {% elif user.is_employer %}
+	    <a class="dark-link" href="{% url 'new-listing' %}">List a job today.</a>
+	    {% endif %}
+
+	    {% endif %}
+	 </div>
+      </div>
+   </div> 
+
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<script src="{% static 'messenger/scripts/reconnecting-websocket.min.js' %}"></script>
+
+{% if room_pks %}
+<script>
+   {% for room_pk in room_pks %}
+   var chatSocket{{ room_pk }} = new ReconnectingWebSocket('ws://' + window.location.host + '/ws/messages/'+ {{ room_pk }} + '/');
+
+   chatSocket{{ room_pk }}.onmessage = function(e) {
+      var data = JSON.parse(e.data);
+      if (document.getElementById("panel-tab-{{ room_pk }}") != null) {
+	 var div = document.getElementById("panel-tab-{{ room_pk }}");
+	 document.getElementById("conversations").prepend(div);
+
+         document.getElementById("tab-message-timestamp-{{ room_pk }}").innerText = data["message"]["panel_timestamp"];
+         document.getElementById("tab-message-content-{{ room_pk }}").innerText = data["message"]["content"];
+
+         // message sent by current user
+	 if (Number(data["message"]["author"] === {{ user.pk }})) {
+	    return;
+	 }
+
+	 var badge_unread = document.getElementById("badge-unread-{{ room_pk }}");
+	 if (badge_unread.classList.contains("d-none")) {
+            badge_unread.classList.remove("d-none");
+            badge_unread.innerText = 1;
+	 }
+	 else if (Number(badge_unread.innerText) + 1 < 9) {
+            badge_unread.innerText = Number(badge_unread.innerText) + 1;
+	 }
+	 else {
+            badge_unread.innerText = "9+";
+	 }
+      }
+      else {
+	 var div = document.createElement("div");
+	 div.id = "panel-tab-{{ room_pk }}";
+	 div.classList.add("panel-tab", "conversation");
+
+	 var a = document.createElement("a");
+	 a.classList.add("text-dark", "text-decoration-none");
+
+	 {% if job_id %}
+	 a.href = "/messages/{{ room_pk }}/?q={{ job_id }}";
+	 {% else %}
+	 a.href = "/messages/{{ room_pk }}/";
+	 {% endif %}
+
+         a.innerHTML = document.getElementById("panel-tab-block").innerHTML;
+	 div.appendChild(a);
+        
+	 {% if user.is_employer %}
+	 div.querySelector(".user-avatar").src = "https://avatar.oxro.io/avatar.svg?name=" + data["message"]["author_display"] + "&background=342e6c&length=1";
+	 {% elif user.is_applicant %}
+	 div.querySelector(".user-avatar").src = "https://avatar.oxro.io/avatar.svg?name=" + data["message"]["company"] + "&background=342e6c&length=1";
+	 {% endif %}
+
+	 div.querySelector(".tab-message-timestamp").innerText = data["message"]["panel_timestamp"];
+	 div.querySelector(".tab-message-timestamp").id = "tab-message-timestamp-{{ room_pk }}";
+
+	 div.querySelector(".tab-message-author-display").innerText = data["message"]["author_display"];
+
+	 {% if user.is_employer %}
+	 div.querySelector(".panel-tab-application-status").innerText = data["message"]["status"];
+	 div.querySelector(".panel-tab-job-info").innerText = " for " + data["message"]["job_title"] + " (ID: " + data["message"]["job_id"] + ")";
+	 {% elif user.is_applicant %}
+	 div.querySelector(".panel-tab-company").innerText = data["message"]["company"];
+	 {% endif %}
+
+	 div.querySelector(".tab-message-content").innerText = data["message"]["content"];
+	 div.querySelector(".tab-message-content").id = "tab-message-content-{{ room_pk }}";
+
+	 div.querySelector(".badge-unread").id = "badge-unread-{{ room_pk }}";
+
+         document.getElementById("conversations").prepend(div);
+      }
+   };
+   {% endfor %}
+</script>
+{% endif %}
+
+<script id="panel-tab-block">
+   <div style="height: 100px;" class="border-bottom">
+      <div class="d-flex p-2 p-sm-3 h-100">
+         <div class="flex-shrink my-auto mr-12px">
+            <img class="user-avatar rounded-circle" style="width:44px; height:44px;">
+         </div>
+
+         <div class="flex-grow-1 py-1 py-sm-0" style="min-width:0px;">
+            <div class="tab-message-timestamp float-right small" style="padding: .125rem 0;"></div>
+
+            <div>
+               <div class="text-truncate font-weight-bold tab-message-author-display" style="max-width: 90%;"></div>
+            </div>
+
+            <div class="text-truncate" style="max-width: 90%;">
+	       {% if user.is_employer %}
+	       <span class="panel-tab-application-status text-capitalize"></span>
+	       <span class="panel-tab-job-info"></span>
+	       {% elif user.is_applicant %}
+               <span class="panel-tab-company"></span>
+	       {% endif %}
+            </div>
+
+            <div class="badge badge-unread badge-danger rounded-pill float-right">1</div>
+            <div class="text-truncate small text-muted tab-message-content" style="max-width: 90%;"></div>
+         </div>
+      </div>
+   </div>
+</script>
+{% endblock scripts %}
